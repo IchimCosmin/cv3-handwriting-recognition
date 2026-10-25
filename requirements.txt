@@ -1,0 +1,14 @@
+# Python 3.12
+#
+# PyTorch cu CUDA se instalează ÎNAINTE de acest fișier (vezi README, pasul 2):
+# pachetul torch de pe PyPI pentru Windows este doar pentru CPU.
+# Versiunile de mai jos sunt cele fixate pentru proiect.
+torch==2.14.1
+torchvision==0.29.1
+
+numpy==2.5.4
+pandas==3.1.0
+matplotlib==3.11.2
+pillow==13.0.0
+tqdm==4.70.1
+jiwer==4.0.0  # calculul CER / WER
