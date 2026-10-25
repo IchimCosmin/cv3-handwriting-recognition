@@ -1,0 +1,28 @@
+# Setul de date - nu se încarcă în repository
+data/
+*.tgz
+
+# Checkpoint-uri, modele salvate, rezultate generate
+checkpoints/
+runs/
+outputs/
+*.pt
+*.pth
+*.ckpt
+
+# Mediu virtual
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# IDE / sistem
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
