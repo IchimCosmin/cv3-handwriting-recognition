@@ -24,6 +24,7 @@ Proiect de semestru pentru laboratorul **CV 3**: un model de rețea neuronală c
 ├── checkpoints/       # stările salvate ale antrenării (NU sunt urmărite de git)
 ├── src/
 │   ├── dataset.py     # Dataset + DataLoader + transformări, împărțirea train/val/test
+│   ├── check_dataset.py  # verificarea încărcării datelor (statistici, batch-uri, exemple)
 │   ├── model.py       # arhitectura CRNN
 │   ├── train.py       # antrenarea, salvarea și reluarea din checkpoint
 │   ├── test.py        # evaluarea pe setul de test (CER, WER)
@@ -35,8 +36,8 @@ Proiect de semestru pentru laboratorul **CV 3**: un model de rețea neuronală c
 
 | Etapă | Conținut |
 | --- | --- |
-| S4 | crearea repository-ului (acest commit) |
-| S6 | setul de date și DataLoader-ul funcționale |
+| S4 | crearea repository-ului |
+| S6 | setul de date și DataLoader-ul funcționale (`src/dataset.py`) |
 | S9 | rularea end-to-end a modelului (antrenare, validare, testare, grafice, checkpoint) |
 | S12 | augmentarea cu metoda generativă |
 | S14 | prezentarea proiectului |
@@ -76,17 +77,55 @@ Setul de date **nu este inclus** în repository.
 1. Înregistrați-vă (gratuit) pe [pagina IAM Handwriting Database](https://fki.tic.heia-fr.ch/databases/iam-handwriting-database).
 2. De pe [pagina de descărcare](https://fki.tic.heia-fr.ch/databases/download-the-iam-handwriting-database), descărcați:
    - `words.tgz` - imaginile cuvintelor;
-   - `ascii.tgz` - adnotările (fișierul `words.txt` conține textul fiecărui cuvânt).
-3. Dezarhivați-le în folderul `data/`:
+   - `ascii.tgz` - adnotările: `words.txt` (textul fiecărui cuvânt) și `forms.txt` (autorul fiecărei pagini, folosit la împărțirea train/val/test).
+3. Dezarhivați-le în folderul `data/` (comanda `tar` există și pe Windows 10/11):
+
+   ```bash
+   python -c "import os; [os.makedirs(d, exist_ok=True) for d in ('data/words', 'data/ascii')]"
+   tar -xzf words.tgz -C data/words
+   tar -xzf ascii.tgz -C data/ascii
+   ```
+
+   Structura rezultată:
 
    ```
    data/
-   ├── words/      # din words.tgz
-   └── ascii/      # din ascii.tgz (words.txt)
+   ├── words/      # a01/a01-000u/a01-000u-00-00.png, ... (din words.tgz)
+   └── ascii/      # words.txt, forms.txt, ... (din ascii.tgz)
    ```
+
+   Codul găsește fișierele și dacă arhivele au fost dezarhivate într-un subfolder suplimentar (de exemplu `data/ascii/ascii/words.txt`).
 
 Setul de date poate fi folosit doar în scopuri de cercetare non-comerciale. Referință: U. Marti, H. Bunke, *The IAM-database: An English Sentence Database for Off-line Handwriting Recognition*, International Journal on Document Analysis and Recognition, vol. 5, pp. 39-46, 2002.
 
+## Încărcarea și pre-procesarea datelor (`src/dataset.py`)
+
+| Pas | Ce face |
+| --- | --- |
+| Adnotări | citește `words.txt`; elimină cuvintele cu segmentare marcată `err` și cele 2 imagini corupte cunoscute (`a01-117-05-02`, `r06-022-03-05`) |
+| Împărțire | **pe autori**, 80% / 10% / 10% (train / val / test), cu seed fix (42): niciun autor nu apare în două subseturi |
+| Alfabet | construit doar din train; indexul 0 este simbolul *blank* pentru CTC; cuvintele din val/test cu caractere necunoscute sunt eliminate (numărul lor este afișat) |
+| Imagini | grayscale, redimensionate fără deformare astfel încât să încapă în 64 × 256 px, completate cu alb (padding) la dreapta și jos |
+| Normalizare | media și deviația standard calculate pe 2.000 de imagini din train (nu din val/test) |
+| Augmentări (doar train) | rotație ±2°, înclinare (shear) ±10°, translație și scalare ușoare, variații de luminozitate și contrast |
+| DataLoader | batch-uri cu imagini `[B, 1, 64, 256]`; etichetele sunt concatenate, cu lungimile lor separat (formatul cerut de `nn.CTCLoss`) |
+
+Utilizare:
+
+```python
+from src.dataset import get_dataloaders
+
+loaders, charset, info = get_dataloaders('data', batch_size=64, num_workers=4)
+for images, targets, target_lengths, texts in loaders['train']:
+    ...
+```
+
 ## Rulare
 
-Instrucțiunile de antrenare și testare vor fi adăugate odată cu componentele software (etapele S6-S9).
+Verificarea încărcării datelor (statistici pentru fiecare subset, verificarea autorilor disjuncți, forma batch-urilor, codificarea etichetelor; salvează exemple în `outputs/dataset_samples.png`):
+
+```bash
+python -m src.check_dataset --data_dir data
+```
+
+Instrucțiunile de antrenare și testare vor fi adăugate odată cu componentele următoare (etapa S9).
