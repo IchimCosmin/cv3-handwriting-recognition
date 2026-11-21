@@ -281,12 +281,16 @@ def collate_ctc(batch):
 
 
 def get_dataloaders(data_dir='data', batch_size: int = 64, num_workers: int = 4, seed: int = 42,
-                    augment: bool = True, height: int = IMG_HEIGHT, width: int = IMG_WIDTH):
+                    augment: bool = True, height: int = IMG_HEIGHT, width: int = IMG_WIDTH,
+                    persistent_workers: bool = False):
     """Creează DataLoader-ele de train / val / test și întoarce și alfabetul + informațiile despre împărțire.
 
     - împărțire pe autori 80/10/10, cu seed fix;
     - alfabetul și statisticile de normalizare se calculează doar pe train;
-    - augmentările se aplică doar pe train; val și test folosesc doar redimensionare, padding și normalizare.
+    - augmentările se aplică doar pe train; val și test folosesc doar redimensionare, padding și normalizare;
+    - ``persistent_workers=False`` (implicit): procesele de încărcare sunt recreate la fiecare epocă și primesc seed-uri
+      din generatorul DataLoader-ului, deci ordinea datelor și augmentările unei epoci pot fi refăcute exact la reluarea
+      antrenării din checkpoint (vezi ``src/train.py``).
     """
     samples = read_words(data_dir)
     splits = split_by_writer(samples, seed=seed)
@@ -300,7 +304,7 @@ def get_dataloaders(data_dir='data', batch_size: int = 64, num_workers: int = 4,
     }
 
     loader_args = dict(batch_size=batch_size, num_workers=num_workers, collate_fn=collate_ctc,
-                       pin_memory=torch.cuda.is_available(), persistent_workers=num_workers > 0)
+                       pin_memory=torch.cuda.is_available(), persistent_workers=persistent_workers and num_workers > 0)
     generator = torch.Generator().manual_seed(seed)  # ordinea batch-urilor de train este reproductibilă
     loaders = {
         'train': DataLoader(datasets['train'], shuffle=True, drop_last=True, generator=generator, **loader_args),
